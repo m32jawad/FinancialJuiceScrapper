@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Real-Time News Dashboard</title>
+  <!-- Include Socket.IO from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
+  <style>
+    /* Basic Reset & Body Styling */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1b1e27;
+      color: #e1e1e1;
+      padding-bottom: 60px;
+    }
+    
+    /* Top Navigation Bar */
+    .navbar {
+      display: flex;
+      align-items: center;
+      background-color: #292d36;
+      padding: 10px 20px;
+    }
+    .navbar h1 {
+      color: #ffffff;
+      font-weight: normal;
+      font-size: 1.5rem;
+      margin-right: 20px;
+    }
+    .search-container {
+      flex: 1;
+      position: relative;
+    }
+    .search-container input[type="text"] {
+      width: 100%;
+      padding: 10px 40px 10px 15px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background-color: #22252d;
+      color: #ddd;
+      font-size: 1rem;
+    }
+    .search-container input[type="text"]::placeholder { color: #888; }
+    .search-icon {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      color: #888;
+      font-size: 1.2rem;
+    }
+
+    /* Category Nav (feed IDs from the website) */
+    .category-bar {
+      display: flex;
+      background-color: #2f353f;
+      padding: 10px 20px;
+      gap: 1rem;
+      overflow-x: auto;
+    }
+    .category-link {
+      padding: 5px 10px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: #ccc;
+      font-size: 0.9rem;
+      background-color: #22252d;
+      white-space: nowrap;
+      transition: background 0.2s, border 0.2s;
+      border: 1px solid transparent;
+    }
+    .category-link:hover { background-color: #3a3f49; }
+    .category-link.selected { border: 1px solid #fff; }
+
+    /* News Container */
+    #news-container {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+    .news-item {
+      background-color: #2f353f;
+      margin-bottom: 10px;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #3a3f49;
+    }
+    .news-title {
+      font-weight: bold;
+      font-size: 1rem;
+      margin-bottom: 5px;
+      color: #ffffff;
+    }
+    .news-meta {
+      font-size: 0.9rem;
+      color: #999;
+      margin-bottom: 10px;
+    }
+    .news-description {
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      color: #ccc;
+      line-height: 1.5;
+    }
+
+    /* Styling for bullet points (unordered lists) */
+    .news-description ul {
+      margin-left: 20px;
+      list-style-type: disc;
+    }
+
+    .news-description ul li {
+      margin-bottom: 5px;
+    }
+
+    /* Styling for ordered lists */
+    .news-description ol {
+      margin-left: 20px;
+      list-style-type: decimal;
+    }
+
+    .news-description ol li {
+      margin-bottom: 5px;
+    }
+
+    /* Styling for images */
+    .news-description img {
+      max-width: 100%;
+      height: auto;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+
+    /* Styling for blockquotes */
+    .news-description blockquote {
+      margin: 10px 20px;
+      padding: 10px;
+      background-color: #292d36;
+      border-left: 4px solid #66b2ff;
+      color: #ddd;
+      font-style: italic;
+    }
+
+    /* Styling for links inside the description */
+    .news-description a {
+      color: #66b2ff;
+      text-decoration: none;
+    }
+
+    .news-description a:hover {
+      text-decoration: underline;
+    }
+
+    .news-labels, .news-category {
+      font-size: 0.85rem;
+      color: #fff;
+      margin-bottom: 5px;
+    }
+    .news-labels span, .news-category span {
+      background-color: #444a53;
+      padding: 2px 6px;
+      margin-right: 5px;
+      border-radius: 4px;
+    }
+    .news-item a {
+      color: #66b2ff;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .news-item a:hover { text-decoration: underline; }
+    .breaking-label {
+      display: inline-block;
+      margin-bottom: 10px;
+      background-color: red;
+      color: #fff;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .news-bullet {
+      margin-right: 8px;
+      color: #66b2ff;
+    }
+
+    .read_more {
+      display: none;
+    }
+    .news-image {
+      width: 100%;
+    }
+    
+    .news-image img {
+      width: 100%;
+    }
+
+    /* Temporary highlight class */
+    .highlight-yellow {
+      background-color: #385547ed !important;
+      transition: background-color 0.5s ease;
+    }
+
+    .highlight-gray {
+      background-color: gray !important;
+      transition: background-color 0.5s ease;
+    }
+    
+  </style>
+</head>
+<body>
+
+  <!-- Top Nav Bar -->
+  <div class="navbar">
+    <h1> Noticias en Tiempo Real </h1>
+    <div class="search-container" id="search-container" style="display:none">
+      <input type="text" id="searchInput" placeholder="SEARCH e.g APPLE OR 'CRUDE OIL'">
+      <span class="search-icon">&#x1F50D;</span>
+    </div>
+  </div>
+
+  <!-- Category Bar – feed IDs are used as data-cat values -->
+  <div class="category-bar">
+    <a href="#" class="category-link" data-cat="All">All</a>
+    <a href="#" class="category-link" data-cat="3">Bonds</a>
+    <a href="#" class="category-link" data-cat="2">Commodities</a>
+    <a href="#" class="category-link" data-cat="8">Crypto</a>
+    <a href="#" class="category-link" data-cat="4">Equities</a>
+    <a href="#" class="category-link" data-cat="5">Forex</a>
+    <a href="#" class="category-link" data-cat="9">Indexes</a>
+    <a href="#" class="category-link" data-cat="1">Macro</a>
+    <a href="#" class="category-link" data-cat="10">Market Moving</a>
+    <a href="#" class="category-link" data-cat="11">Elite</a>
+  </div>
+
+  <!-- News Container -->
+  <div id="news-container">
+    {% for news in news_list %}
+      {# Here we assume news.stream_ids is a list of stream id values (as numbers or strings) #}
+      <div class="news-item" data-streamids="{{ news.stream_ids | join(',') }}">
+        <div>
+          <span class="news-bullet">&#8226;</span>
+          <span class="news-title">{{ news.title }}</span>
+        </div>
+        {% if news.description %}
+        <div class="news-description">{{ news.description | safe }}</div>
+        {% endif %}
+
+        {% if news.img %}
+        <div class="news-image">
+          <img src="https://www.financialjuice.com{{ news.img }}" alt="News Image">
+        </div>
+        {% endif %}
+        
+        <div class="news-meta">
+          Published: {{ news.date_published }} 
+        </div>
+        
+        <div class="news-category" style='display:none'>
+          Stream IDs:
+          {% for sid in news.stream_ids %}
+            <span>{{ sid }}</span>
+          {% endfor %}
+        </div>
+        
+        {% if news.labels  or news.fcname %}
+          <div class="news-labels">
+            {% if news.fcname %} <span>{{ news.fcname }}</span> {% endif %}
+            {% for label in news.labels %}
+              <span>{{ label }}</span>
+              {% endfor %}
+            </div>
+          
+        {% endif %}
+        {% if news.breaking %}
+          <div class="breaking-label">Breaking News!</div>
+        {% endif %}
+        <a href="{{ news.eurl }}" class='read_more' target="_blank">Read more</a>
+      </div>
+    {% endfor %}
+  </div>
+
+  <button id="playButton" style="display: none;">Play Video</button>
+  <video id="notificationAlert" style="display: block;height: 0;" controls>
+    <source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3" type="audio/mp3">
+    Your browser does not support the video tag.
+  </video>
+
+  <script>
+    var playButton = document.getElementById("playButton");
+    var video = document.getElementById("notificationAlert");
+    playButton.addEventListener("click", function() {
+      // Play the video
+      video.play();
+  });
+</script>
+  <script>
+    // Socket.IO connection
+    const socket = io();
+
+    // Currently selected category (feed id) filter; empty means no filter (all news shown)
+    let selectedCategory = "";
+
+    // Mapping from feed id to category name (for display if needed)
+    const feedMapping = {
+      "3": "Bonds",
+      "2": "Commodities",
+      "8": "Crypto",
+      "4": "Equities",
+      "5": "Forex",
+      "9": "Indexes",
+      "1": "Macro",
+      "10": "Market Moving",
+      "11": "Elite"
+    };
+
+    // Event listener for category link clicks
+    const categoryLinks = document.querySelectorAll('.category-link');
+    categoryLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const cat = this.getAttribute('data-cat');
+        if (selectedCategory === cat || cat === "All") {
+          // Deselect filter
+          selectedCategory = "";
+          categoryLinks.forEach(l => l.classList.remove('selected'));
+          filterNewsItems();
+        } else {
+          selectedCategory = cat;
+          categoryLinks.forEach(l => l.classList.remove('selected'));
+          this.classList.add('selected');
+          filterNewsItems();
+        }
+      });
+    });
+
+    // Function to filter displayed news items based on selectedCategory (feed id)
+    function filterNewsItems() {
+      const newsItems = document.querySelectorAll('.news-item');
+      newsItems.forEach(item => {
+        if (!selectedCategory) {
+          item.style.display = "block";
+        } else {
+          const streamIdsStr = item.getAttribute('data-streamids');
+          const streamIds = streamIdsStr.split(',').map(s => s.trim());
+          if (streamIds.includes(selectedCategory)) {
+            item.style.display = "block";
+          } else {
+            item.style.display = "none";
+          }
+        }
+      });
+    }
+
+    // Helper function to classify a news item by its stream_ids (returns array of strings)
+    function classifyByStream(stream_ids) {
+      let cats = [];
+      stream_ids.forEach(sid => {
+        sid = String(sid).trim();
+        if (feedMapping[sid]) {
+          cats.push(feedMapping[sid]);
+        }
+      });
+      if (cats.length === 0) { cats.push("My News"); }
+      return cats;
+    }
+
+    // Function to temporarily highlight a news item
+    function highlightNewsItem(newsElem, colorClass) {
+      newsElem.classList.add(colorClass);
+      setTimeout(() => {
+        newsElem.classList.remove(colorClass);
+      }, 2000); // Remove the class after 2 seconds
+    }
+
+    // Listen for "news_update" event from the server (real-time updates)
+    socket.on('news_update', function(data) {
+      console.log("New news received:", data);
+      
+      // Ensure stream_ids is available – assume data.stream_ids is already an array
+      let streams = data.stream_ids || [];
+      let categories = classifyByStream(streams);
+
+      // Create a new news item element
+      let newsElem = document.createElement("div");
+      newsElem.className = "news-item";
+      newsElem.setAttribute("data-streamids", streams.join(','));
+
+      // Title row with bullet
+      let titleRow = document.createElement("div");
+      let bulletSpan = document.createElement("span");
+      bulletSpan.className = "news-bullet";
+      bulletSpan.innerHTML = "&#8226;";
+      let titleSpan = document.createElement("span");
+      titleSpan.className = "news-title";
+      titleSpan.textContent = data.title;
+      titleRow.appendChild(bulletSpan);
+      titleRow.appendChild(document.createTextNode(" "));
+      titleRow.appendChild(titleSpan);
+      newsElem.appendChild(titleRow);
+
+      // Meta info
+      let metaElem = document.createElement("div");
+      metaElem.className = "news-meta";
+      let sourceName = data.fcname ? data.fcname : "Unknown";
+      metaElem.textContent = `Published: ${data.date_published} | Source: ${sourceName}`;
+      newsElem.appendChild(metaElem);
+
+      // Description
+      if (data.description) {
+        let descElem = document.createElement("div");
+        descElem.className = "news-description";
+        descElem.innerHTML = data.description;
+        newsElem.appendChild(descElem);
+      }
+
+      if (data.img) {
+        let imgDiv = document.createElement("div");
+        imgDiv.className = "news-image";
+        let imgElem = document.createElement("img");
+        imgElem.src = `https://www.financialjuice.com${data.img}`;
+        imgElem.alt = "News Image";
+        imgDiv.appendChild(imgElem);
+        newsElem.appendChild(imgDiv);
+        
+        
+      }
+      // Display stream IDs as categories
+      let categoryElem = document.createElement("div");
+      categoryElem.className = "news-category";
+      let catHTML = "Stream IDs: ";
+      streams.forEach(sid => {
+        catHTML += `<span>${sid}</span> `;
+      });
+      categoryElem.innerHTML = catHTML;
+      categoryElem.style.display = "none"; // Initially hidden, can be shown if needed
+      newsElem.appendChild(categoryElem);
+
+      // Labels display (if any)
+      if (data.labels && data.labels.length > 0) {
+        let labelsElem = document.createElement("div");
+        labelsElem.className = "news-labels";
+        let labelHTML = "";
+        if (data.fcname) {
+          labelHTML += `<span>${data.fcname}</span> `;
+        }
+        data.labels.forEach(label => {
+          labelHTML += `<span>${label}</span> `;
+        });
+        labelsElem.innerHTML = labelHTML;
+        newsElem.appendChild(labelsElem);
+      }
+
+      // Breaking news
+      if (data.breaking) {
+        let breakingElem = document.createElement("div");
+        breakingElem.className = "breaking-label";
+        breakingElem.textContent = "Breaking News!";
+        newsElem.appendChild(breakingElem);
+      }
+
+      // Link
+      let linkElem = document.createElement("a");
+      linkElem.href = data.eurl;
+      linkElem.target = "_blank";
+      linkElem.textContent = "Read more";
+      linkElem.className = "read_more";
+      newsElem.appendChild(linkElem);
+
+      // If a category filter (feed id) is active and this news item's stream_ids do NOT include that feed id, hide it
+      if (selectedCategory && !streams.map(String).includes(selectedCategory)) {
+        newsElem.style.display = "none";
+      }
+      else {
+        // Play a sound when new news is added
+        playButton.click();
+      }
+
+      // Insert the new news element at the top of the container
+      const container = document.getElementById("news-container");
+      container.insertBefore(newsElem, container.firstChild);
+
+      // Highlight the newly added news item
+      highlightNewsItem(newsElem, "highlight-yellow");
+    });
+
+    // On page load, ensure filtering is applied
+    window.addEventListener('DOMContentLoaded', filterNewsItems);
+  </script>
+</body>
+</html>
+<!-- End of HTML Document -->
