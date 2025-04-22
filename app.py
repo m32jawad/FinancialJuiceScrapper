@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
 import datetime
 import json
-from pyngrok import ngrok
+# from pyngrok import ngrok
 import os
 # from googletrans import Translator
 from aiogoogletrans import Translator
@@ -239,20 +239,21 @@ async def add_news():
 PORT = 5000
 
 try:
+    pass
     # Set your Ngrok access token
-    ngrok.set_auth_token(NGROK_ACCESS_TOKEN)
+    # ngrok.set_auth_token(NGROK_ACCESS_TOKEN)
 
-    # Disconnect any existing tunnels
-    for tunnel in ngrok.get_tunnels():
-        ngrok.disconnect(tunnel.public_url)
+    # # Disconnect any existing tunnels
+    # for tunnel in ngrok.get_tunnels():
+    #     ngrok.disconnect(tunnel.public_url)
 
-    # Open an Ngrok tunnel with the reserved subdomain
-    public_url = ngrok.connect(PORT, domain=RESERVED_SUBDOMAIN)
-    print("Ngrok tunnel available at:", public_url)
+    # # Open an Ngrok tunnel with the reserved subdomain
+    # public_url = ngrok.connect(PORT, domain=RESERVED_SUBDOMAIN)
+    # print("Ngrok tunnel available at:", public_url)
 except Exception as e:
     print(f"Failed to setup Ngrok tunnel: {str(e)}")
     print("Continuing without Ngrok tunnel...")
 
 if __name__ == '__main__':
     create_tables()  # Ensure tables are created before starting the app
-    socketio.run(app, debug=True)
+    socketio.run(app, host="0.0.0.0", debug=True)

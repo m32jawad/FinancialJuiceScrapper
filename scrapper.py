@@ -12,6 +12,8 @@ import os
 def start():
     # Set up Chrome options
     chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument("--proxy-server=http://localhost:8080")  # Use mitmproxy's default port
     chrome_options.add_argument("--ignore-certificate-errors")  # Accept insecure certificates
 
