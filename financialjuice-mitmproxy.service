@@ -1,0 +1,18 @@
+[Unit]
+Description=mitmproxy WebSocket Interceptor
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/FinancialJuiceScrapper
+Environment="PATH=/home/ubuntu/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+# <- change this:
+ExecStart=/home/ubuntu/venv/bin/mitmdump \
+           -s /home/ubuntu/FinancialJuiceScrapper/ws_interceptor.py
+Restart=always
+RestartSec=5
+
+
+[Install]
+WantedBy=multi-user.target

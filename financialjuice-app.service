@@ -1,0 +1,20 @@
+[Unit]
+Description=FinancialJuice Flask-SocketIO App
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/FinancialJuiceScrapper
+Environment="PATH=/home/ubuntu/venv/bin:/usr/local/bin:/usr/bin"
+ExecStart=/home/ubuntu/venv/bin/gunicorn \
+  --workers 1 \
+  --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
+  --bind 0.0.0.0:5000 \
+  app:app
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

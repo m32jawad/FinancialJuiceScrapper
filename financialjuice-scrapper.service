@@ -1,0 +1,15 @@
+[Unit]
+Description=FinancialJuice Selenium Scraper
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/FinancialJuiceScrapper
+Environment="PATH=/home/ubuntu/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+ExecStart=/home/ubuntu/venv/bin/python /home/ubuntu/FinancialJuiceScrapper/scrapper.py
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
