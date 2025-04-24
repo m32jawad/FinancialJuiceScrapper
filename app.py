@@ -1,3 +1,5 @@
+import gevent.monkey
+gevent.monkey.patch_all()
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
@@ -25,7 +27,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///news.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode = 'gevent')
 
 # Define a News model to store scraped news
 class News(db.Model):

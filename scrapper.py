@@ -10,22 +10,28 @@ from dotenv import load_dotenv
 import os
 
 def start():
+    load_dotenv()
     # Set up Chrome options
     chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument("--proxy-server=http://localhost:8080")  # Use mitmproxy's default port
-    chrome_options.add_argument("--ignore-certificate-errors")  # Accept insecure certificates
+    print('starting')
+    chrome_options = Options()
+    chrome_options.add_argument('--headless=new')             # use the new headless mode
+    chrome_options.add_argument('--no-sandbox')               # required on many Linux hosts
+    chrome_options.add_argument('--disable-dev-shm-usage')    # avoid /dev/shm issues
+    chrome_options.add_argument('--disable-gpu')              # (just in case)
+    chrome_options.add_argument('--ignore-certificate-errors')# trust the mitmproxy cert
+    chrome_options.add_argument('--proxy-server=http://127.0.0.1:8080')
 
+    print("installing driver")
     # Automatically download and set up Chrome driver
     service = Service(ChromeDriverManager().install())
 
     # Start Selenium browser
     driver = webdriver.Chrome(service=service, options=chrome_options)
-
+    print("starting browser")
     # Open the target website
     driver.get("https://www.financialjuice.com/")  # Replace with the actual website
-
+    print("juice scrapper loading")
     # Now, mitmproxy will capture all WebSocket messages
 
     # Load environment variables from .env file
@@ -45,6 +51,7 @@ def start():
 
     try:
         # Wait until the element with ID 'liSignIn' appears on the page
+        print("logging in")
         WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.ID, "liSignIn")))
         driver.execute_script(script)
     except:
